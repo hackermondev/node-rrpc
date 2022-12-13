@@ -1,7 +1,7 @@
 import { Redis } from 'ioredis';
 import { RRPCBase } from './Base';
 import { ICreateChannPacket } from '../types/messages';
-import { Channel } from './Channel';
+import { Channel, ChannelState } from './Channel';
 import { MessageOps } from '../types/ops';
 
 export declare interface RRPCServer {
@@ -9,14 +9,20 @@ export declare interface RRPCServer {
 }
 
 export class RRPCServer extends RRPCBase {
+    public running: boolean;
+    public channels: Channel[];
+
     constructor(serverName: string, redis: Redis, baseName = 'rrpc') {
         super(baseName, redis);
         this.server_name = serverName;
+        this.running = false;
+        this.channels = [];
     }
 
     async run() {
         const Channel0 = `${this.name}/${this.server_name}/channel0`;
         this.redis.subscribe(Channel0);
+        this.running = true;
         this.redis.on('message', (channel, message) => {
             if (channel != Channel0) return;
 
@@ -40,8 +46,28 @@ export class RRPCServer extends RRPCBase {
             this.debug('creating channel', data);
             const chann = new Channel((data as ICreateChannPacket).type, this, 'server');
             chann.connect(data as ICreateChannPacket);
+            this.channels.push(chann);
 
             this.emit('connection', chann);
         });
+    }
+
+    async close(
+        {
+            closeAllActiveChannels,
+            forceCloseChannels,
+        }: { closeAllActiveChannels: boolean; forceCloseChannels: boolean } = {
+            closeAllActiveChannels: true,
+            forceCloseChannels: false,
+        },
+    ) {
+        const Channel0 = `${this.name}/${this.server_name}/channel0`;
+        await this.redis.unsubscribe(Channel0);
+
+        this.running = false;
+        if (closeAllActiveChannels)
+            this.channels
+                .filter((c) => c.state == ChannelState.FullyConnected)
+                .map((c) => c.close(forceCloseChannels));
     }
 }

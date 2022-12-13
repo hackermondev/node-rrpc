@@ -16,6 +16,12 @@ export interface IChannelMessage {
     id: string;
     to: 'client' | 'server';
 }
+
+export interface IChannelPing {
+    ref: string;
+    to: 'client' | 'server';
+}
+
 export interface IChannelCloseRequest {
     to: 'client' | 'server';
 }
@@ -25,4 +31,5 @@ export type Message = (
     | ICheckConnectionPacket
     | IChannelMessage
     | IChannelCloseRequest
+    | IChannelPing
 ) & { op: MessageOps };

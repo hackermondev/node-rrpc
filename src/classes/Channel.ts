@@ -5,6 +5,7 @@ import {
     ChannType,
     IChannelCloseRequest,
     IChannelMessage,
+    IChannelPing,
     ICheckConnectionPacket,
     ICreateChannPacket,
 } from '../types/messages';
@@ -28,6 +29,7 @@ const nanoid = customAlphabet('1234567890abcdef', 10);
 export declare interface Channel {
     on(event: 'connect', listener: () => void): this;
     on(event: 'close', listener: () => void): this;
+    on(event: 'pong', listener: (ref: string) => void): this;
     on(
         event: 'message',
         listener: (data: Buffer, message: IChannelMessage, messageCount: number) => void,
@@ -41,9 +43,15 @@ export class Channel extends EventEmitter {
     public recievedMessagesCount: number;
     private readonly base: RRPCBase;
     private readonly isServer: boolean;
+    private readonly _interval: NodeJS.Timeout;
     private redisPubName: string;
 
-    constructor(type: ChannType, server: RRPCBase, as: 'client' | 'server') {
+    constructor(
+        type: ChannType,
+        server: RRPCBase,
+        as: 'client' | 'server',
+        pingInterval = 3 * 1000,
+    ) {
         super();
         this.id = '';
         this.type = type;
@@ -53,6 +61,14 @@ export class Channel extends EventEmitter {
         this.recievedMessagesCount = 0;
         this.isServer = as == 'server';
         this.redisPubName = `${this.base.name}/${server.server_name}`;
+
+        this._interval = setInterval(async () => {
+            if (this.state != ChannelState.FullyConnected) return;
+
+            const recievedPong = await this.ping();
+            if (!recievedPong) return this.close(true);
+        }, pingInterval);
+        this._interval.unref();
     }
 
     async connect(createChann: ICreateChannPacket) {
@@ -119,6 +135,19 @@ export class Channel extends EventEmitter {
                 this.base.debug(this.id, 'unsubscribed');
 
                 redis.removeListener('message', messageCallback);
+            } else if (data.op == MessageOps.Ping || data.op == MessageOps.Pong) {
+                const packet = data as IChannelPing;
+                if (packet.to == (this.isServer ? 'client' : 'server')) return;
+
+                if (data.op == MessageOps.Pong) return this.emit('pong', packet.ref);
+
+                const pong: IChannelPing & { op: MessageOps } = {
+                    op: MessageOps.Pong,
+                    ref: packet.ref,
+                    to: this.isServer ? 'client' : 'server',
+                };
+
+                this.base.redis2.publish(this.redisPubName, this.base.parseOutgoingMessage(pong));
             }
         };
 
@@ -130,14 +159,50 @@ export class Channel extends EventEmitter {
         this.state = ChannelState.PartiallyConnected;
     }
 
-    close() {
+    close(force?: boolean) {
         if (this.state != ChannelState.FullyConnected) throw new Error('Not fully connected');
         const packet: IChannelCloseRequest & { op: MessageOps } = {
             op: MessageOps.ChannelCloseReq,
             to: this.isServer ? 'client' : 'server',
         };
+
+        if (force == true) {
+            this.base.debug('forcing close request');
+            packet.to = this.isServer ? 'server' : 'client';
+            return this.base.redis2.publish(
+                this.redisPubName,
+                this.base.parseOutgoingMessage(packet),
+            );
+        }
+
         this.base.debug('send close request');
         return this.base.redis2.publish(this.redisPubName, this.base.parseOutgoingMessage(packet));
+    }
+
+    async ping(timeout = 10 * 1000): Promise<boolean> {
+        const ref = await nanoid();
+        const ping: IChannelPing & { op: MessageOps } = {
+            op: MessageOps.Pong,
+            ref,
+            to: this.isServer ? 'client' : 'server',
+        };
+
+        this.base.redis2.publish(this.redisPubName, this.base.parseOutgoingMessage(ping));
+        return await new Promise((resolve) => {
+            const callback = (id: string) => {
+                if (id == ref) {
+                    clearInterval(timeoutInterval);
+                    this.removeListener('pong', callback);
+                    resolve(true);
+                }
+            };
+
+            this.on('pong', callback);
+            const timeoutInterval = setTimeout(() => {
+                this.removeListener('pong', callback);
+                resolve(false);
+            }, timeout);
+        });
     }
 
     async send(raw: Buffer | string | object, options: { packet_id?: string } = {}) {
