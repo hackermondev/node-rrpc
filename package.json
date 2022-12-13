@@ -1,6 +1,6 @@
 {
   "name": "node-rrpc",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Fast, and simple JavaScript RPC library built with Redis PUB/SUB.",
   "files": [
     "./dist"
