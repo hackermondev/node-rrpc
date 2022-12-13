@@ -1,7 +1,8 @@
 import { Redis } from 'ioredis';
 import { RRPCBase } from './Base';
-import { ICreateChannMessage } from '../types/messages';
+import { ICreateChannPacket } from '../types/messages';
 import { Channel } from './Channel';
+import { MessageOps } from '../types/ops';
 
 export declare interface RRPCServer {
     on(event: 'connection', listener: (channel: Channel) => void): this;
@@ -34,11 +35,11 @@ export class RRPCServer extends RRPCBase {
 
             const data = this.parseIncomingMessage(Buffer.from(message));
             this.debug(channel, data);
-            if (data.op != 'createchan') return;
+            if (data.op != MessageOps.CreateChannelRequest) return;
 
             this.debug('creating channel', data);
-            const chann = new Channel((data as ICreateChannMessage).type, this, 'server');
-            chann.connect(data as ICreateChannMessage);
+            const chann = new Channel((data as ICreateChannPacket).type, this, 'server');
+            chann.connect(data as ICreateChannPacket);
 
             this.emit('connection', chann);
         });

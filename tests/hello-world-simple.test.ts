@@ -3,7 +3,7 @@
 import { RRPCServer, RRPCClient } from '../src';
 import Redis from 'ioredis-mock';
 
-// Use the same Redis instance can cause issues so we can two
+// Using the same Redis instance can cause issues so we can two
 const redis1 = new Redis();
 const redis2 = new Redis();
 

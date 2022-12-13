@@ -5,9 +5,8 @@ import {
     ChannType,
     IChannelCloseRequest,
     IChannelMessage,
-    ICheckConnectionMessage,
-    ICreateChannMessage,
-    Message,
+    ICheckConnectionPacket,
+    ICreateChannPacket,
 } from '../types/messages';
 import { MessageOps } from '../types/ops';
 import { customAlphabet } from 'nanoid/async';
@@ -19,13 +18,19 @@ export enum ChannelState {
     FullyConnected = 3, // Server & client are connected
 }
 
+interface IChannelMessage2 {
+    createdAt: string;
+    data: Buffer;
+    id: string;
+    to: 'client' | 'server';
+}
 const nanoid = customAlphabet('1234567890abcdef', 10);
 export declare interface Channel {
     on(event: 'connect', listener: () => void): this;
     on(event: 'close', listener: () => void): this;
     on(
         event: 'message',
-        listener: (data: Buffer, message: Message, messageCount: number) => void,
+        listener: (data: Buffer, message: IChannelMessage, messageCount: number) => void,
     ): this;
 }
 
@@ -50,13 +55,13 @@ export class Channel extends EventEmitter {
         this.redisPubName = `${this.base.name}/${server.server_name}`;
     }
 
-    async connect(createChann: ICreateChannMessage) {
+    async connect(createChann: ICreateChannPacket) {
         this.redisPubName = `${this.redisPubName}/chann${createChann.id}`;
         const redis = this.base.redis;
         const name = this.redisPubName;
 
         this.state = ChannelState.Connecting;
-        const c: ICheckConnectionMessage & { op: MessageOps } = {
+        const c: ICheckConnectionPacket & { op: MessageOps } = {
             connected: this.isServer ? 'server' : 'client',
             waitingForOtherConnection: true,
             op: MessageOps.ConnectionCheck,
@@ -69,9 +74,9 @@ export class Channel extends EventEmitter {
             this.base.debug(channel, data);
             if (data.op == MessageOps.ConnectionCheck) {
                 // Connection check
-                const message = data as ICheckConnectionMessage;
-                if (message.connected == (this.isServer ? 'client' : 'server')) {
-                    if (message.waitingForOtherConnection) {
+                const packet = data as ICheckConnectionPacket;
+                if (packet.connected == (this.isServer ? 'client' : 'server')) {
+                    if (packet.waitingForOtherConnection) {
                         c.waitingForOtherConnection = false;
                         this.base.redis2.publish(name, this.base.parseOutgoingMessage(c));
                     }
@@ -81,14 +86,14 @@ export class Channel extends EventEmitter {
                 }
             } else if (data.op == MessageOps.Message) {
                 // Channel message
-                const message = data as IChannelMessage;
-                if (message.to == (this.isServer ? 'client' : 'server')) return;
-                this.base.debug(this.id, 'recieved chann message', message, this.isServer);
+                const packet = data as IChannelMessage;
+                if (packet.to == (this.isServer ? 'client' : 'server')) return;
+                this.base.debug(this.id, 'recieved chann message', packet, this.isServer);
 
                 this.recievedMessagesCount += 1;
                 this.emit(
                     'message',
-                    Buffer.from(message.data, 'base64'),
+                    Buffer.from(packet.data, 'base64'),
                     data,
                     this.recievedMessagesCount,
                 );
@@ -103,10 +108,10 @@ export class Channel extends EventEmitter {
                     this.close();
                 }
             } else if (data.op == MessageOps.ChannelCloseReq) {
-                const message = data as IChannelMessage;
-                if (message.to == (this.isServer ? 'server' : 'client')) return;
+                const packet = data as IChannelMessage;
+                if (packet.to == (this.isServer ? 'server' : 'client')) return;
 
-                this.base.debug(this.id, 'recieved close chann request', message);
+                this.base.debug(this.id, 'recieved close chann request', packet);
                 this.state = ChannelState.Disconnected;
 
                 this.emit('close');
@@ -127,31 +132,50 @@ export class Channel extends EventEmitter {
 
     close() {
         if (this.state != ChannelState.FullyConnected) throw new Error('Not fully connected');
-        const message: IChannelCloseRequest & { op: MessageOps } = {
+        const packet: IChannelCloseRequest & { op: MessageOps } = {
             op: MessageOps.ChannelCloseReq,
             to: this.isServer ? 'client' : 'server',
         };
         this.base.debug('send close request');
-        return this.base.redis2.publish(this.redisPubName, this.base.parseOutgoingMessage(message));
+        return this.base.redis2.publish(this.redisPubName, this.base.parseOutgoingMessage(packet));
     }
 
-    async send(raw: Buffer | string | object, waitForResponse = true) {
+    async send(raw: Buffer | string | object, options: { packet_id?: string } = {}) {
         if (this.state != ChannelState.FullyConnected) throw new Error('Not fully connected');
 
         if (typeof raw == 'object' && !Buffer.isBuffer(raw)) raw = JSON.stringify(raw);
         if (typeof raw != 'string' && typeof raw != 'object') raw = (raw as number).toString();
 
         const data = Buffer.from(raw);
-        const message: IChannelMessage & { op: MessageOps } = {
+        const packet: IChannelMessage & { op: MessageOps } = {
             op: MessageOps.Message,
-            createdAt: new Date().getTime(),
+            createdAt: new Date().toString(),
             data: data.toString('base64'),
-            id: await nanoid(),
+            id: options.packet_id || (await nanoid()),
             to: this.isServer ? 'client' : 'server',
         };
-        return await this.base.redis2.publish(
-            this.redisPubName,
-            this.base.parseOutgoingMessage(message),
-        );
+
+        await this.base.redis2.publish(this.redisPubName, this.base.parseOutgoingMessage(packet));
+        return packet;
+    }
+
+    async reply(raw: Buffer | string | object, packet_id?: string): Promise<IChannelMessage2> {
+        const packet = await this.send(raw, { packet_id });
+        return await new Promise((resolve) => {
+            const messageCallback: (_: unknown, packet2: IChannelMessage) => void = (
+                _,
+                packet2,
+            ) => {
+                if (packet2.id != packet.id) return;
+                const p: IChannelMessage2 = { ...packet2, data: Buffer.from(packet2.data) };
+                resolve(p);
+
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                //@ts-ignore
+                this.removeListener('message', messageCallback);
+            };
+
+            this.on('message', messageCallback);
+        });
     }
 }
