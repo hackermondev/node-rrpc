@@ -4,7 +4,7 @@ import { ICreateChannMessage } from '../types/messages';
 import { Channel } from './Channel';
 
 export declare interface RRPCServer {
-    on(event: 'channel', listener: (channel: Channel) => void): this;
+    on(event: 'connection', listener: (channel: Channel) => void): this;
 }
 
 export class RRPCServer extends RRPCBase {
@@ -38,7 +38,7 @@ export class RRPCServer extends RRPCBase {
             const chann = new Channel((data as ICreateChannMessage).type, this, 'server');
             chann.connect(data as ICreateChannMessage);
 
-            this.emit('channel', chann);
+            this.emit('connection', chann);
         });
     }
 }
