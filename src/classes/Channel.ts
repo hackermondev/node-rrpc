@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 import { EventEmitter } from 'stream';
 import { RRPCBase } from './Base';
 import {
@@ -59,7 +60,7 @@ export class Channel extends EventEmitter {
             op: 'connection',
         };
 
-        const messageCallback = (channel: string, raw: any) => {
+        const messageCallback = (channel: string, raw: string) => {
             if (channel != name) return;
             const data = this.base.parseIncomingMessage(Buffer.from(raw));
 
@@ -133,11 +134,11 @@ export class Channel extends EventEmitter {
         return this.base.redis2.publish(this.redisPubName, this.base.parseOutgoingMessage(message));
     }
 
-    send(raw: Buffer | string | any) {
+    send(raw: Buffer | string | object) {
         if (this.state != ChannelState.FullyConnected) throw new Error('Not fully connected');
 
         if (typeof raw == 'object' && !Buffer.isBuffer(raw)) raw = JSON.stringify(raw);
-        if (typeof raw != 'string' && typeof raw != 'object') raw = raw.toString();
+        if (typeof raw != 'string' && typeof raw != 'object') raw = (raw as number).toString();
 
         const data = Buffer.from(raw);
         const message: IChannelMessage & { op: MessageOPs } = {

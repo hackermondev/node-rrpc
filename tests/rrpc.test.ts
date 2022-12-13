@@ -7,7 +7,6 @@ import Redis from 'ioredis-mock';
 const redis1 = new Redis();
 const redis2 = new Redis();
 
-//@ts-ignore
 test('should be able to send and recieve and simple oneway hello world data', (done) => {
     (async () => {
         const server = new RRPCServer('hello-world-service', redis1);
@@ -19,7 +18,7 @@ test('should be able to send and recieve and simple oneway hello world data', (d
         await server.run();
 
         client.start('oneway');
-        if(!client.channel) throw new Error('no client.channel');
+        if (!client.channel) throw new Error('no client.channel');
 
         client.channel.on('connect', () => {
             console.debug('client connected after', nowFn());
@@ -28,7 +27,7 @@ test('should be able to send and recieve and simple oneway hello world data', (d
 
         client.channel.on('message', (data) => {
             console.debug('client recieved message after', nowFn());
-            if(data.toString() == 'hello world') done();
+            if (data.toString() == 'hello world') done();
         });
 
         server.on('connection', (channel) => {
@@ -39,4 +38,4 @@ test('should be able to send and recieve and simple oneway hello world data', (d
             });
         });
     })();
-})
+});

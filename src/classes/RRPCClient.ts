@@ -11,7 +11,7 @@ export class RRPCClient extends RRPCBase {
     }
 
     start(channelType: 'oneway' | 'stream' = 'stream') {
-        if(this.channel) throw new Error('Client channel for service already exists');
+        if (this.channel) throw new Error('Client channel for service already exists');
 
         const Channel0 = `${this.name}/${this.server_name}/channel0`;
         const rand = Math.floor(Math.random() * 50000);

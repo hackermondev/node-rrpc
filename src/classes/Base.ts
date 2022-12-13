@@ -6,6 +6,7 @@ import { EventEmitter } from 'stream';
 import { Message } from '../types/messages';
 
 if (typeof jest !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     //@ts-ignore
     RedisClient = require('ioredis-mock');
 }
@@ -16,7 +17,7 @@ export class RRPCBase extends EventEmitter {
     public readonly redis2: Redis;
     public readonly id: string;
     public server_name: string;
-    public debug: (...data: any) => void;
+    public debug: (...data: unknown[]) => void;
 
     constructor(name: string, redisClient: Redis) {
         super();
@@ -30,7 +31,7 @@ export class RRPCBase extends EventEmitter {
         this.debug = () => {};
     }
 
-    parseOutgoingMessage(data: Object) {
+    parseOutgoingMessage(data: object) {
         return JSON.stringify(data);
     }
 
