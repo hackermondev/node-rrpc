@@ -8,8 +8,9 @@ import {
     ICheckConnectionMessage,
     ICreateChannMessage,
     Message,
-    MessageOPs,
 } from '../types/messages';
+import { MessageOps } from '../types/ops';
+import { customAlphabet } from 'nanoid/async';
 
 export enum ChannelState {
     Disconnected = 0,
@@ -18,6 +19,7 @@ export enum ChannelState {
     FullyConnected = 3, // Server & client are connected
 }
 
+const nanoid = customAlphabet('1234567890abcdef', 10);
 export declare interface Channel {
     on(event: 'connect', listener: () => void): this;
     on(event: 'close', listener: () => void): this;
@@ -54,10 +56,10 @@ export class Channel extends EventEmitter {
         const name = this.redisPubName;
 
         this.state = ChannelState.Connecting;
-        const c: ICheckConnectionMessage & { op: string } = {
+        const c: ICheckConnectionMessage & { op: MessageOps } = {
             connected: this.isServer ? 'server' : 'client',
             waitingForOtherConnection: true,
-            op: 'connection',
+            op: MessageOps.ConnectionCheck,
         };
 
         const messageCallback = (channel: string, raw: string) => {
@@ -65,7 +67,7 @@ export class Channel extends EventEmitter {
             const data = this.base.parseIncomingMessage(Buffer.from(raw));
 
             this.base.debug(channel, data);
-            if (data.op == 'connection') {
+            if (data.op == MessageOps.ConnectionCheck) {
                 // Connection check
                 const message = data as ICheckConnectionMessage;
                 if (message.connected == (this.isServer ? 'client' : 'server')) {
@@ -77,7 +79,7 @@ export class Channel extends EventEmitter {
                     this.state = ChannelState.FullyConnected;
                     this.emit('connect');
                 }
-            } else if (data.op == 'connmessage') {
+            } else if (data.op == MessageOps.Message) {
                 // Channel message
                 const message = data as IChannelMessage;
                 if (message.to == (this.isServer ? 'client' : 'server')) return;
@@ -100,8 +102,7 @@ export class Channel extends EventEmitter {
                     this.base.debug('closing channel because one-way message finished');
                     this.close();
                 }
-            } else if (data.op == 'channclosereq') {
-                // Channel message
+            } else if (data.op == MessageOps.ChannelCloseReq) {
                 const message = data as IChannelMessage;
                 if (message.to == (this.isServer ? 'server' : 'client')) return;
 
@@ -126,28 +127,31 @@ export class Channel extends EventEmitter {
 
     close() {
         if (this.state != ChannelState.FullyConnected) throw new Error('Not fully connected');
-        const message: IChannelCloseRequest & { op: MessageOPs } = {
-            op: 'channclosereq',
+        const message: IChannelCloseRequest & { op: MessageOps } = {
+            op: MessageOps.ChannelCloseReq,
             to: this.isServer ? 'client' : 'server',
         };
         this.base.debug('send close request');
         return this.base.redis2.publish(this.redisPubName, this.base.parseOutgoingMessage(message));
     }
 
-    send(raw: Buffer | string | object) {
+    async send(raw: Buffer | string | object, waitForResponse = true) {
         if (this.state != ChannelState.FullyConnected) throw new Error('Not fully connected');
 
         if (typeof raw == 'object' && !Buffer.isBuffer(raw)) raw = JSON.stringify(raw);
         if (typeof raw != 'string' && typeof raw != 'object') raw = (raw as number).toString();
 
         const data = Buffer.from(raw);
-        const message: IChannelMessage & { op: MessageOPs } = {
-            op: 'connmessage',
+        const message: IChannelMessage & { op: MessageOps } = {
+            op: MessageOps.Message,
             createdAt: new Date().getTime(),
             data: data.toString('base64'),
-            id: '',
+            id: await nanoid(),
             to: this.isServer ? 'client' : 'server',
         };
-        return this.base.redis2.publish(this.redisPubName, this.base.parseOutgoingMessage(message));
+        return await this.base.redis2.publish(
+            this.redisPubName,
+            this.base.parseOutgoingMessage(message),
+        );
     }
 }

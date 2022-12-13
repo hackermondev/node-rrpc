@@ -1,3 +1,5 @@
+import { MessageOps } from './ops';
+
 export type ChannType = 'oneway' | 'stream';
 export interface ICreateChannMessage {
     id: string;
@@ -18,10 +20,9 @@ export interface IChannelCloseRequest {
     to: 'client' | 'server';
 }
 
-export type MessageOPs = 'createchan' | 'connection' | 'connmessage' | 'channclosereq';
 export type Message = (
     | ICreateChannMessage
     | ICheckConnectionMessage
     | IChannelMessage
     | IChannelCloseRequest
-) & { op: MessageOPs };
+) & { op: MessageOps };
