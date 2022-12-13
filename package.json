@@ -1,6 +1,6 @@
 {
   "name": "node-rrpc",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Fast, and simple JavaScript RPC library built with Redis PUB/SUB.",
   "files": [
     "./dist"
@@ -16,7 +16,7 @@
     "test": "jest --no-cache",
     "lint": "eslint --fix --ext .js,.ts src/",
     "preversion": "yarn lint && yarn clean && yarn build",
-    "postversion": "echo \"committing\" && git add . && git commit -am v$npm_package_version && echo \"setting tag\" && git tag v$npm_package_version && echo \"pushing branch and tag\" && git push origin HEAD --tags && echo \"publishing\" && yarn publish --new-version $npm_package_version && echo \"Successfully released version v$npm_package_version!\""
+    "postversion": "echo \"committing\" && git add . && git commit -m v$npm_package_version && echo \"setting tag\" && git tag v$npm_package_version && echo \"pushing branch and tag\" && git push origin HEAD --tags && echo \"publishing\" && yarn publish --new-version $npm_package_version && echo \"Successfully released version v$npm_package_version!\""
   },
   "devDependencies": {
     "@types/ioredis-mock": "^8.2.1",
