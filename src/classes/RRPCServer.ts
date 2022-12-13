@@ -1,24 +1,23 @@
-import { Redis } from "ioredis";
-import { RRPCBase } from "./Base";
-import { ICreateChannMessage } from "../types/messages";
-import { Channel } from "./Channel";
+import { Redis } from 'ioredis';
+import { RRPCBase } from './Base';
+import { ICreateChannMessage } from '../types/messages';
+import { Channel } from './Channel';
 
 export declare interface RRPCServer {
     on(event: 'channel', listener: (channel: Channel) => void): this;
 }
 
-
 export class RRPCServer extends RRPCBase {
-    constructor(serverName: string, redis: Redis, baseName: string = 'rrpc') {
+    constructor(serverName: string, redis: Redis, baseName = 'rrpc') {
         super(baseName, redis);
         this.server_name = serverName;
-    };
+    }
 
     async run() {
         const Channel0 = `${this.name}/${this.server_name}/channel0`;
         this.redis.subscribe(Channel0);
         this.redis.on('message', (channel, message) => {
-            if(channel != Channel0) return;
+            if (channel != Channel0) return;
 
             // The client requests a new channel
             // Connection details are sent to the server in channel0
@@ -33,7 +32,7 @@ export class RRPCServer extends RRPCBase {
 
             const data = this.parseIncomingMessage(Buffer.from(message));
             this.debug(channel, data);
-            if(data.op != 'createchan') return;
+            if (data.op != 'createchan') return;
 
             this.debug('creating channel', data);
             const chann = new Channel((data as ICreateChannMessage).type, this, 'server');
@@ -42,4 +41,4 @@ export class RRPCServer extends RRPCBase {
             this.emit('channel', chann);
         });
     }
-};
+}

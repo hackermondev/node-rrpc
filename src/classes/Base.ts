@@ -5,11 +5,10 @@ import { randomUUID } from 'crypto';
 import { EventEmitter } from 'stream';
 import { Message } from '../types/messages';
 
-
-if(typeof jest !== 'undefined') {
+if (typeof jest !== 'undefined') {
     //@ts-ignore
     RedisClient = require('ioredis-mock');
-};
+}
 
 export class RRPCBase extends EventEmitter {
     public readonly name: string;
@@ -26,16 +25,16 @@ export class RRPCBase extends EventEmitter {
         this.redis = redisClient;
         this.redis2 = new RedisClient(this.redis.options);
         this.id = randomUUID();
-        
+
         // By default, the debug function is empty. If you want to log debug, redeclare it and log to console
         this.debug = () => {};
     }
 
     parseOutgoingMessage(data: Object) {
         return JSON.stringify(data);
-    }  
+    }
 
     parseIncomingMessage(data: Buffer): Message {
         return JSON.parse(data.toString('utf8'));
     }
-};
+}
