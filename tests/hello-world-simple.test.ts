@@ -22,14 +22,17 @@ test('should be able to send and recieve and simple oneway hello world data', (d
         };
 
         await server.run();
-
-        client.start('oneway');
-        if (!client.channel) throw new Error('no client.channel');
-
-        client.channel.on('connect', () => {
-            timings.clientConnected = nowFn();
-            client.channel?.send('hello world');
+        server.on('connection', (channel) => {
+            channel.on('connect', () => (timings.serverConnected = nowFn()));
+            channel.on('message', () => {
+                timings.serverRecievedMessage = nowFn();
+                channel.send('hello world');
+            });
         });
+
+        await client.start('oneway');
+        timings.clientConnected = nowFn();
+        client.channel.send('hello world');
 
         client.channel.on('message', (data) => {
             timings.clientRecievedMessage = nowFn();
@@ -40,14 +43,6 @@ test('should be able to send and recieve and simple oneway hello world data', (d
                 );
                 done();
             }
-        });
-
-        server.on('connection', (channel) => {
-            channel.on('connect', () => (timings.serverConnected = nowFn()));
-            channel.on('message', () => {
-                timings.serverRecievedMessage = nowFn();
-                channel.send('hello world');
-            });
         });
     })();
 });

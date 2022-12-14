@@ -157,6 +157,7 @@ export class Channel extends EventEmitter {
 
         this.base.debug('connected to channel, subscribed redis to', name);
         this.state = ChannelState.PartiallyConnected;
+        await new Promise((resolve) => this.on('connect', () => resolve(1)));
     }
 
     close(force?: boolean) {

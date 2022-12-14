@@ -14,13 +14,11 @@ test("the client should disconnect when the server doesn't respond to ping reque
         const client = new RRPCClient('hello-world-service', redis2);
         await server.run();
 
-        client.start();
-        client.channel.on('connect', async () => {
-            client.channel.on('close', () => {
-                done();
-            });
-
-            await server.close({ closeAllActiveChannels: true, forceCloseChannels: true });
+        await client.start();
+        client.channel.on('close', () => {
+            done();
         });
+
+        await server.close({ closeAllActiveChannels: true, forceCloseChannels: true });
     })();
 });

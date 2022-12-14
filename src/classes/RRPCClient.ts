@@ -16,7 +16,7 @@ export class RRPCClient extends RRPCBase {
         return this._channel;
     }
 
-    start(channelType: 'oneway' | 'stream' = 'stream') {
+    async start(channelType: 'oneway' | 'stream' = 'stream') {
         if (this._channel) throw new Error('Client channel for service already exists');
 
         const Channel0 = `${this.name}/${this.server_name}/channel0`;
@@ -32,7 +32,7 @@ export class RRPCClient extends RRPCBase {
 
         const channel = new Channel(channelType, this, 'client');
         this._channel = channel;
-        channel.connect(message);
+        await channel.connect(message);
 
         return channel;
     }
