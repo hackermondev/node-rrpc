@@ -20,9 +20,6 @@ test('should be able to send and recieve and simple oneway hello world data with
         });
 
         await client.start();
-        client.channel.on('message', (data) => {
-            if (data.toString() == 'hello world') done();
-        });
 
         const { data } = await client.channel.reply('hello world');
         if (data.toString() == 'hello world') {
