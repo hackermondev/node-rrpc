@@ -15,6 +15,7 @@ test('should be able to send and recieve and simple oneway hello world data with
 
         server.on('connection', (channel) => {
             channel.on('message', (_, packet) => {
+                console.debug(packet);
                 channel.send('hello world', { packet_id: packet.id });
             });
         });
