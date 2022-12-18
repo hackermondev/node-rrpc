@@ -23,8 +23,8 @@ export class RRPCBase extends EventEmitter {
         super();
         this.server_name = '';
         this.name = name;
-        this.redis = redisClient;
-        this.redis2 = new RedisClient(this.redis.options);
+        this.redis = new RedisClient(redisClient.options);
+        this.redis2 = new RedisClient(redisClient.options);
         this.id = randomUUID();
 
         // By default, the debug function is empty. If you want to log debug, redeclare it and log to console

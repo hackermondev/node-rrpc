@@ -19,10 +19,21 @@ export class RRPCServer extends RRPCBase {
         this.channels = [];
     }
 
+    private async renewSubscription() {
+        if (!this.running) return;
+
+        const name = `${this.name}/${this.server_name}/subscription/${this.id}`;
+        await this.redis2.set(name, '1');
+        await this.redis2.expire(name, 1_000);
+
+        setTimeout(() => this.renewSubscription(), 1_000 - 1).unref();
+    }
+
     async run() {
-        const Channel0 = `${this.name}/${this.server_name}/channel0`;
+        const Channel0 = `${this.name}/${this.server_name}/${this.id}/channel0`;
         this.redis.subscribe(Channel0);
         this.running = true;
+        this.renewSubscription();
         this.redis.on('message', (channel, message) => {
             if (channel != Channel0) return;
 

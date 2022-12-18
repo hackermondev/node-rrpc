@@ -66,7 +66,7 @@ export class Channel extends EventEmitter {
             if (this.state != ChannelState.FullyConnected) return;
 
             const recievedPong = await this.ping();
-            if (!recievedPong) return this.close(true);
+            if (!recievedPong && this.state == ChannelState.FullyConnected) return this.close(true);
         }, pingInterval);
         this._interval.unref();
     }

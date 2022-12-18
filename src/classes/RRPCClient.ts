@@ -1,4 +1,5 @@
 import { Redis } from 'ioredis';
+import _ from 'lodash';
 import { RRPCBase } from './Base';
 import { ICreateChannPacket } from '../types/messages';
 import { MessageOps } from '../types/ops';
@@ -6,6 +7,7 @@ import { Channel } from './Channel';
 
 export class RRPCClient extends RRPCBase {
     private _channel?: Channel;
+    public _clusterId?: string;
     constructor(serverName: string, redis: Redis, baseName = 'rrpc') {
         super(baseName, redis);
         this.server_name = serverName;
@@ -19,7 +21,16 @@ export class RRPCClient extends RRPCBase {
     async start(channelType: 'oneway' | 'stream' = 'stream') {
         if (this._channel) throw new Error('Client channel for service already exists');
 
-        const Channel0 = `${this.name}/${this.server_name}/channel0`;
+        const clusters = await this.redis.keys(`${this.name}/${this.server_name}/subscription/*`);
+        if (clusters.length == 0) throw new Error('No available clusters');
+
+        this.debug('possible clusters', clusters);
+        const cluster = _.sample(clusters) as string;
+        const clusterId = cluster.split('/')[3];
+
+        this.debug('picked cluster', clusterId);
+        this._clusterId = clusterId;
+        const Channel0 = `${this.name}/${this.server_name}/${clusterId}/channel0`;
         const rand = Math.floor(Math.random() * 50000);
         const message: ICreateChannPacket & { op: MessageOps } = {
             op: MessageOps.CreateChannelRequest,

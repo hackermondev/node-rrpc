@@ -16,6 +16,8 @@ test("the client should disconnect when the server doesn't respond to ping reque
 
         await client.start();
         client.channel.on('close', () => {
+            redis1.quit();
+            redis2.quit();
             done();
         });
 

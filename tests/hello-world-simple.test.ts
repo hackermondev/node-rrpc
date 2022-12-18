@@ -41,6 +41,9 @@ test('should be able to send and recieve and simple oneway hello world data', (d
                     // eslint-disable-next-line max-len
                     `Timings: client_connected (${timings.clientConnected}ms), server_connected (${timings.serverConnected}ms), client_first_message (${timings.clientRecievedMessage}ms), server_first_message (${timings.serverRecievedMessage}ms)`,
                 );
+
+                redis1.quit();
+                redis2.quit();
                 done();
             }
         });

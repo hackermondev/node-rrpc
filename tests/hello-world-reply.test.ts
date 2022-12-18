@@ -15,7 +15,6 @@ test('should be able to send and recieve and simple oneway hello world data with
 
         server.on('connection', (channel) => {
             channel.on('message', (_, packet) => {
-                console.debug(packet);
                 channel.send('hello world', { packet_id: packet.id });
             });
         });
@@ -24,6 +23,8 @@ test('should be able to send and recieve and simple oneway hello world data with
 
         const { data } = await client.channel.reply('hello world');
         if (data.toString() == 'hello world') {
+            redis1.quit();
+            redis2.quit();
             done();
         }
     })();
