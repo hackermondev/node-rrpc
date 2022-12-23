@@ -239,13 +239,13 @@ export class Channel extends EventEmitter {
     }
 
     async reply(raw: Buffer | string | object, packet_id?: string): Promise<IChannelMessage2> {
-        const packet = await this.send(raw, { packet_id });
+        const id = packet_id || (await nanoid());
         return await new Promise((resolve) => {
             const messageCallback: (data: Buffer, packet2: IChannelMessage) => void = (
                 data,
                 packet2,
             ) => {
-                if (packet2.id != packet.id) return;
+                if (packet2.id != id) return;
                 const p: IChannelMessage2 = { ...packet2, data };
                 resolve(p);
 
@@ -255,6 +255,7 @@ export class Channel extends EventEmitter {
             };
 
             this.on('message', messageCallback);
+            this.send(raw, { packet_id: id });
         });
     }
 }
