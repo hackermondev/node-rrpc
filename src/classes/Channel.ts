@@ -109,6 +109,8 @@ export class Channel extends EventEmitter {
                 // Channel message
                 const packet = data as IChannelMessage;
                 if (packet.to == (this.isServer ? 'client' : 'server')) return;
+                if (this.state != ChannelState.FullyConnected)
+                    this.state = ChannelState.FullyConnected;
                 this.base.debug(this.id, 'recieved chann message', packet, this.isServer);
 
                 this.recievedMessagesCount += 1;
