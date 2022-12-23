@@ -11,6 +11,7 @@ export declare interface RRPCServer {
 export class RRPCServer extends RRPCBase {
     public running: boolean;
     public channels: Channel[];
+    private _messageCallback?: (channel: string, message: string) => void;
 
     constructor(serverName: string, redis: Redis, baseName = 'rrpc') {
         super(baseName, redis);
@@ -22,19 +23,20 @@ export class RRPCServer extends RRPCBase {
     private async renewSubscription() {
         if (!this.running) return;
 
+        // this.debug('running renew subscription');
         const name = `${this.name}/${this.server_name}/subscription/${this.id}`;
         await this.redis2.set(name, '1');
-        await this.redis2.expire(name, 1_000);
+        await this.redis2.expire(name, 1);
 
         setTimeout(() => this.renewSubscription(), 1_000 - 1).unref();
     }
 
     async run() {
         const Channel0 = `${this.name}/${this.server_name}/${this.id}/channel0`;
-        this.redis.subscribe(Channel0);
         this.running = true;
         this.renewSubscription();
-        this.redis.on('message', (channel, message) => {
+
+        this._messageCallback = (channel, message) => {
             if (channel != Channel0) return;
 
             // The client requests a new channel
@@ -60,7 +62,10 @@ export class RRPCServer extends RRPCBase {
             this.channels.push(chann);
 
             this.emit('connection', chann);
-        });
+        };
+
+        this.redis.on('message', this._messageCallback);
+        this.redis.subscribe(Channel0);
     }
 
     async close(
@@ -72,10 +77,11 @@ export class RRPCServer extends RRPCBase {
             forceCloseChannels: false,
         },
     ) {
-        const Channel0 = `${this.name}/${this.server_name}/channel0`;
+        const Channel0 = `${this.name}/${this.server_name}/${this.id}/channel0`;
         await this.redis.unsubscribe(Channel0);
 
         this.running = false;
+        if (this._messageCallback) this.redis.removeListener('message', this._messageCallback);
         if (closeAllActiveChannels)
             this.channels
                 .filter((c) => c.state == ChannelState.FullyConnected)

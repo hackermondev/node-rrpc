@@ -43,8 +43,9 @@ export class RRPCClient extends RRPCBase {
 
         const channel = new Channel(channelType, this, 'client');
         this._channel = channel;
-        await channel.connect(message);
+        const result = await channel.connect(message).catch((err) => err);
 
+        if (result instanceof Error) throw result;
         return channel;
     }
 }

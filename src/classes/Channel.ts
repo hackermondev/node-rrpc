@@ -44,19 +44,24 @@ export class Channel extends EventEmitter {
     private readonly base: RRPCBase;
     private readonly isServer: boolean;
     private readonly _interval: NodeJS.Timeout;
+    private readonly connectionTimeout: number;
     private redisPubName: string;
 
     constructor(
         type: ChannType,
         server: RRPCBase,
         as: 'client' | 'server',
-        pingInterval = 3 * 1000,
+        { pingInterval, connectionTimeout } = {
+            pingInterval: 3 * 1000,
+            connectionTimeout: 3 * 1000,
+        },
     ) {
         super();
         this.id = '';
         this.type = type;
         this.state = ChannelState.Disconnected;
         this.base = server;
+        this.connectionTimeout = connectionTimeout;
 
         this.recievedMessagesCount = 0;
         this.isServer = as == 'server';
@@ -157,7 +162,15 @@ export class Channel extends EventEmitter {
 
         this.base.debug('connected to channel, subscribed redis to', name);
         this.state = ChannelState.PartiallyConnected;
-        await new Promise((resolve) => this.on('connect', () => resolve(1)));
+
+        await new Promise((resolve, reject) => {
+            this.on('connect', () => resolve(1));
+            setTimeout(() => {
+                if (this.state == ChannelState.PartiallyConnected) {
+                    reject(new Error('Connection timeout'));
+                }
+            }, this.connectionTimeout);
+        });
     }
 
     close(force?: boolean) {
@@ -202,7 +215,7 @@ export class Channel extends EventEmitter {
             const timeoutInterval = setTimeout(() => {
                 this.removeListener('pong', callback);
                 resolve(false);
-            }, timeout);
+            }, timeout).unref();
         });
     }
 
