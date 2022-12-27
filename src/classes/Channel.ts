@@ -9,6 +9,8 @@ import {
 } from '../types/messages';
 import { MessageOps } from '../types/ops';
 import Queue, { ProcessFunctionCb } from 'better-queue';
+import { nanoid } from 'nanoid';
+import { Message, MessageContentType } from './Message';
 
 export enum ChannelState {
     Disconnected = 0,
@@ -22,7 +24,7 @@ export declare interface Channel {
     on(event: 'close-ack', listener: () => void): this;
     on(event: 'message-ack', listener: () => void): this;
     on(event: 'pong', listener: (ref: string) => void): this;
-    on(event: 'message', listener: (data: number | string | Buffer | object) => void): this;
+    on(event: 'message', listener: (message: Message) => void): this;
 }
 
 export class Channel extends EventEmitter {
@@ -98,7 +100,7 @@ export class Channel extends EventEmitter {
                 const packet = message as IChannelMessage;
 
                 const decoded = Buffer.from(packet.data, 'base64');
-                let result: null | (number | string | Buffer | object) = null;
+                let result: null | MessageContentType = null;
 
                 if (packet.messageData.messageType == 'number')
                     result = parseInt(decoded.toString());
@@ -107,9 +109,11 @@ export class Channel extends EventEmitter {
                 else if (packet.messageData.messageType == 'string') result = decoded.toString();
                 else if (packet.messageData.messageType == 'buffer') result = decoded;
 
+                const m = new Message(result as MessageContentType, this, packet.id);
                 const messageAckPacket: Packet = { op: MessageOps.MessageAck };
                 await this.sendPacket(messageAckPacket);
-                this.emit('message', result);
+                this.emit('message', m);
+                this.emit(`message-${packet.id}`, m);
                 break;
             }
 
@@ -295,7 +299,10 @@ export class Channel extends EventEmitter {
         });
     }
 
-    async send(raw: Buffer | string | object) {
+    async send(
+        raw: Buffer | string | object,
+        { messageId }: { messageId?: string } = {},
+    ): Promise<Message> {
         if (this.state != ChannelState.FullyConnected) throw new Error('Not fully connected');
 
         const messageData = { messageType: 'buffer' } as IChannelMessageData;
@@ -310,15 +317,19 @@ export class Channel extends EventEmitter {
 
         if (typeof raw != 'string' && typeof raw != 'object') raw = (raw as number).toString();
 
+        const id = messageId || nanoid();
         const packet = {
             op: MessageOps.Message,
             createdAt: new Date().toString(),
             data: Buffer.from(raw).toString('base64'),
             messageData,
+            id,
         } as IChannelMessage;
 
         return await new Promise((resolve) => {
-            this.on('message-ack', () => resolve(true));
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            //@ts-ignore
+            this.on(`message-${id}`, resolve);
             this.sendPacket(packet);
         });
     }

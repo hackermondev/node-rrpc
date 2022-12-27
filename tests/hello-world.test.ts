@@ -7,7 +7,7 @@ import Redis from 'ioredis-mock';
 const redis1 = new Redis();
 const redis2 = new Redis();
 
-test('should be able to send and recieve and simple oneway hello world data', (done) => {
+test('should be able to send and recieve (simple hello world service)', (done) => {
     (async () => {
         const server = new RRPCServer('hello-world-service', redis1);
         const client = new RRPCClient('hello-world-service', redis2);
@@ -24,29 +24,24 @@ test('should be able to send and recieve and simple oneway hello world data', (d
         await server.run();
         server.on('connection', (channel) => {
             channel.on('connect', () => (timings.serverConnected = nowFn()));
-            channel.on('message', () => {
+            channel.on('message', (message) => {
                 timings.serverRecievedMessage = nowFn();
-                channel.send('hello world');
+                message.reply('hello world');
             });
         });
 
         await client.start();
         timings.clientConnected = nowFn();
-        client.channel.send('hello world');
+        const result = await client.channel.send('hello world');
+        if (result.content == 'hello world') {
+            console.debug(
+                // eslint-disable-next-line max-len
+                `Timings: client_connected (${timings.clientConnected}ms), server_connected (${timings.serverConnected}ms), client_first_message (${timings.clientRecievedMessage}ms), server_first_message (${timings.serverRecievedMessage}ms)`,
+            );
 
-        client.channel.on('message', (data) => {
-            timings.clientRecievedMessage = nowFn();
-
-            if (data == 'hello world') {
-                console.debug(
-                    // eslint-disable-next-line max-len
-                    `Timings: client_connected (${timings.clientConnected}ms), server_connected (${timings.serverConnected}ms), client_first_message (${timings.clientRecievedMessage}ms), server_first_message (${timings.serverRecievedMessage}ms)`,
-                );
-
-                redis1.quit();
-                redis2.quit();
-                done();
-            }
-        });
+            redis1.quit();
+            redis2.quit();
+            done();
+        }
     })();
 });
