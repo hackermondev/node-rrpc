@@ -304,7 +304,7 @@ export class Channel extends EventEmitter {
 
     async send(
         raw: Buffer | string | object,
-        { messageId }: { messageId?: string } = {},
+        { messageId, waitForReply }: { messageId?: string; waitForReply?: boolean } = {},
     ): Promise<Message> {
         if (this.state != ChannelState.FullyConnected) throw new Error('Not fully connected');
 
@@ -334,8 +334,9 @@ export class Channel extends EventEmitter {
         const reply = await new Promise((resolve, reject) => {
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             //@ts-ignore
-            this.on(`message-${id}`, resolve);
+            this.once(`message-${id}`, resolve);
             this.on('close', () => reject(new Error('Channel closed before reply.')));
+            if (waitForReply == false) this.once('message-ack', resolve);
             this.sendPacket(packet);
         }).catch((err) => err);
 

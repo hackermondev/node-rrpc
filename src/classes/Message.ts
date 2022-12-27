@@ -11,6 +11,6 @@ export class Message {
         this.content = content;
         this.channel = channel;
 
-        this.reply = _.bind(this.channel.send, this.channel, _, { messageId });
+        this.reply = _.bind(this.channel.send, this.channel, _, { messageId, waitForReply: false });
     }
 }
