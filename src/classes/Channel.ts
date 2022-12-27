@@ -139,7 +139,10 @@ export class Channel extends EventEmitter {
         callback(null, true);
     }
 
-    async sendPacket(packet: Packet, { messageSequence }: { messageSequence?: number } = {}) {
+    private async sendPacket(
+        packet: Packet,
+        { messageSequence }: { messageSequence?: number } = {},
+    ) {
         if (!this.redisPubName) throw new Error('not connected');
         if (this.state == ChannelState.Disconnected) throw new Error('not connected');
 
@@ -326,10 +329,11 @@ export class Channel extends EventEmitter {
             id,
         } as IChannelMessage;
 
-        return await new Promise((resolve) => {
+        return await new Promise((resolve, reject) => {
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             //@ts-ignore
             this.on(`message-${id}`, resolve);
+            this.on('close', () => reject('Channel closed before reply.'));
             this.sendPacket(packet);
         });
     }
