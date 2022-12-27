@@ -1,11 +1,16 @@
 /* eslint-env jest */
 
 import { RRPCServer, RRPCClient } from '../src';
-import Redis from 'ioredis-mock';
+import Redis from 'ioredis';
 
 // Using the same Redis instance can cause issues so we can two
 const redis1 = new Redis();
 const redis2 = new Redis();
+
+afterAll(() => {
+    redis1.disconnect();
+    redis2.disconnect();
+});
 
 test('should be able to send and recieve (simple hello world service)', (done) => {
     (async () => {
@@ -39,8 +44,6 @@ test('should be able to send and recieve (simple hello world service)', (done) =
                 `Timings: client_connected (${timings.clientConnected}ms), server_connected (${timings.serverConnected}ms), client_first_message (${timings.clientRecievedMessage}ms), server_first_message (${timings.serverRecievedMessage}ms)`,
             );
 
-            redis1.quit();
-            redis2.quit();
             done();
         }
     })();

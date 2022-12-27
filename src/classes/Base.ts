@@ -5,12 +5,6 @@ import { randomUUID } from 'crypto';
 import { EventEmitter } from 'stream';
 import { Packet } from '../types/messages';
 
-if (typeof jest !== 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    //@ts-ignore
-    RedisClient = require('ioredis-mock');
-}
-
 export class RRPCBase extends EventEmitter {
     public readonly name: string;
     public readonly redis: Redis;

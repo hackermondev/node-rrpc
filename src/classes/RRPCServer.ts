@@ -34,7 +34,6 @@ export class RRPCServer extends RRPCBase {
     async run() {
         const Channel0 = `rrpc:${this.name}/${this.server_name}/${this.id}/channel0`;
         this.running = true;
-        this.renewSubscription();
 
         this._messageCallback = (channel, message) => {
             if (channel != Channel0) return;
@@ -63,6 +62,7 @@ export class RRPCServer extends RRPCBase {
 
         this.redis.on('message', this._messageCallback);
         await this.redis.subscribe(Channel0);
+        await this.renewSubscription();
     }
 
     async close(

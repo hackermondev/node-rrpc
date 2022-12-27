@@ -1,13 +1,18 @@
 /* eslint-env jest */
 
 import { RRPCServer, RRPCClient } from '../src';
-import Redis from 'ioredis-mock';
+import Redis from 'ioredis';
 
 // Using the same Redis instance can cause issues so we can two
 const redis1 = new Redis();
 const redis2 = new Redis();
 
 jest.setTimeout(20 * 1000);
+afterAll(() => {
+    redis1.disconnect();
+    redis2.disconnect();
+});
+
 test("the client should disconnect when the server doesn't respond to ping requests", (done) => {
     (async () => {
         const server = new RRPCServer('hello-world-service2', redis1);
@@ -22,7 +27,6 @@ test("the client should disconnect when the server doesn't respond to ping reque
         await client.start();
         client.channel.pingInterval = 50;
         client.channel.on('close', () => {
-            redis2.quit();
             done();
         });
     })();

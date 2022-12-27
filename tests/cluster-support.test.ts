@@ -8,13 +8,18 @@ function fail(reason = 'fail was called in a test.') {
 global.fail = fail;
 
 import { RRPCClient, RRPCServer } from '../src';
-import Redis from 'ioredis-mock';
+import Redis from 'ioredis';
 
 // Using the same Redis instance can cause issues so we can two
 const redis1 = new Redis();
 const redis2 = new Redis();
 
 jest.setTimeout(20_000);
+afterAll(() => {
+    redis1.disconnect();
+    redis2.disconnect();
+});
+
 test('client should error if no available servers for service', (done) => {
     (async () => {
         const client = new RRPCClient('calculator-service1', redis2);
@@ -23,7 +28,7 @@ test('client should error if no available servers for service', (done) => {
         if (result instanceof Error) {
             done();
         } else {
-            fail();
+            fail('calculator-service1 connected?');
         }
     })();
 });
@@ -37,7 +42,8 @@ test('client should be able to connect when at least one server is available in 
         const result = await client.start().catch((err) => err);
 
         if (result instanceof Error) {
-            fail();
+            console.debug(result);
+            fail('calculator-service2 not connected?');
         } else {
             done();
         }
@@ -84,7 +90,7 @@ test("when a service is closed, the client shouldn't be sending connections to i
         if (result instanceof Error) {
             done();
         } else {
-            fail();
+            fail('calculator-service4 connected?');
         }
     })();
 });
