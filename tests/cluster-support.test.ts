@@ -14,7 +14,7 @@ import Redis from 'ioredis-mock';
 const redis1 = new Redis();
 const redis2 = new Redis();
 
-jest.setTimeout(15_000);
+jest.setTimeout(20_000);
 test('client should error if no available servers for service', (done) => {
     (async () => {
         const client = new RRPCClient('calculator-service1', redis2);
@@ -71,12 +71,14 @@ test('client should be able to choose between random servers for a service when 
 test("when a service is closed, the client shouldn't be sending connections to it", (done) => {
     (async () => {
         const server = new RRPCServer('calculator-service4', redis1);
-        await server.run();
 
-        await new Promise((r) => setTimeout(r, 2000));
+        server.debug = console.debug;
+        await server.run();
         await server.close();
 
+        await new Promise((resolve) => setTimeout(resolve, 2000));
         const client = new RRPCClient('calculator-service4', redis2);
+        client.debug = console.debug;
         const result = await client.start().catch((err) => err);
 
         if (result instanceof Error) {

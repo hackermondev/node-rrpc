@@ -1,35 +1,21 @@
 import { MessageOps } from './ops';
 
-export type ChannType = 'oneway' | 'stream';
-export interface ICreateChannPacket {
+export interface Packet {
+    op: MessageOps;
+    sequence?: number;
+}
+
+export type ICreateChannPacket = Packet & {
     id: string;
-    type: ChannType;
     name?: string;
+};
+
+export interface IChannelMessageData {
+    messageType: 'object' | 'number' | 'buffer' | 'string';
 }
-export interface ICheckConnectionPacket {
-    connected: 'client' | 'server';
-    waitingForOtherConnection: boolean;
-}
-export interface IChannelMessage {
+export type IChannelMessage = Packet & {
     createdAt: string;
     data: string;
     id: string;
-    to: 'client' | 'server';
-}
-
-export interface IChannelPing {
-    ref: string;
-    to: 'client' | 'server';
-}
-
-export interface IChannelCloseRequest {
-    to: 'client' | 'server';
-}
-
-export type Message = (
-    | ICreateChannPacket
-    | ICheckConnectionPacket
-    | IChannelMessage
-    | IChannelCloseRequest
-    | IChannelPing
-) & { op: MessageOps };
+    messageData: IChannelMessageData;
+};

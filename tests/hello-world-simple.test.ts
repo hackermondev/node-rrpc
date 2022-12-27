@@ -30,13 +30,14 @@ test('should be able to send and recieve and simple oneway hello world data', (d
             });
         });
 
-        await client.start('oneway');
+        await client.start();
         timings.clientConnected = nowFn();
         client.channel.send('hello world');
 
         client.channel.on('message', (data) => {
             timings.clientRecievedMessage = nowFn();
-            if (data.toString() == 'hello world') {
+
+            if (data == 'hello world') {
                 console.debug(
                     // eslint-disable-next-line max-len
                     `Timings: client_connected (${timings.clientConnected}ms), server_connected (${timings.serverConnected}ms), client_first_message (${timings.clientRecievedMessage}ms), server_first_message (${timings.serverRecievedMessage}ms)`,

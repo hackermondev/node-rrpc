@@ -1,8 +1,11 @@
 export enum MessageOps {
-    CreateChannelRequest = 0,
-    ConnectionCheck = 1,
-    Message = 2,
-    ChannelCloseReq = 3,
-    Ping = 4,
-    Pong = 5,
+    CreateChannelRequest = 'CREATE_CHANNEL_REQ',
+    Hello = 'HELLO',
+    HelloAck = 'HELLO_ACK',
+    Message = 'MESSAGE',
+    MessageAck = 'MESSAGE_ACK',
+    ChannelCloseReq = 'CHANNEL_CLOSE_REQ',
+    ChannelCloseAck = 'CHANNEL_CLOSE_ACK',
+    Ping = 'PING',
+    Pong = 'PONG',
 }

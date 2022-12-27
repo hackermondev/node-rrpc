@@ -3,7 +3,7 @@ import type { Redis } from 'ioredis';
 
 import { randomUUID } from 'crypto';
 import { EventEmitter } from 'stream';
-import { Message } from '../types/messages';
+import { Packet } from '../types/messages';
 
 if (typeof jest !== 'undefined') {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -35,7 +35,7 @@ export class RRPCBase extends EventEmitter {
         return JSON.stringify(data);
     }
 
-    parseIncomingMessage(data: Buffer): Message {
+    parseIncomingMessage(data: Buffer): Packet {
         return JSON.parse(data.toString('utf8'));
     }
 }
