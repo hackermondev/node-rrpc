@@ -12,6 +12,7 @@ afterAll(() => {
     redis2.disconnect();
 });
 
+jest.setTimeout(20_000);
 test('should be able to send and recieve (simple hello world service)', (done) => {
     (async () => {
         const server = new RRPCServer('hello-world-service', redis1);
@@ -45,6 +46,30 @@ test('should be able to send and recieve (simple hello world service)', (done) =
             );
 
             done();
+        }
+    })();
+});
+
+test('should be able to send and recieve json data (and data should stay json)', (done) => {
+    (async () => {
+        const server = new RRPCServer('hello-world-service2', redis1);
+        const client = new RRPCClient('hello-world-service2', redis2);
+
+        await server.run();
+        server.on('connection', (channel) => {
+            channel.on('message', (message) => {
+                message.reply({ hi: true });
+            });
+        });
+
+        await client.start();
+        const result = await client.channel.send('hello world');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((result.content as any).hi) {
+            client.channel.close();
+            done();
+        } else {
+            throw new Error(`data returned as ${typeof result.content}`);
         }
     })();
 });

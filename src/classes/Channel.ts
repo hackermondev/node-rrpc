@@ -312,11 +312,13 @@ export class Channel extends EventEmitter {
         if (typeof raw == 'object' && !Buffer.isBuffer(raw)) {
             raw = JSON.stringify(raw);
             messageData.messageType = 'object';
+        } else if (typeof raw == 'string') {
+            messageData.messageType = 'string';
+        } else if (typeof raw == 'number' || typeof raw == 'bigint') {
+            messageData.messageType = 'number';
+        } else if (Buffer.isBuffer(raw)) {
+            messageData.messageType = 'buffer';
         }
-
-        if (typeof raw == 'string') messageData.messageType = 'string';
-        if (typeof raw == 'number') messageData.messageType = 'number';
-        if (Buffer.isBuffer(raw)) messageData.messageType = 'buffer';
 
         if (typeof raw != 'string' && typeof raw != 'object') raw = (raw as number).toString();
 
@@ -329,12 +331,15 @@ export class Channel extends EventEmitter {
             id,
         } as IChannelMessage;
 
-        return await new Promise((resolve, reject) => {
+        const reply = await new Promise((resolve, reject) => {
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             //@ts-ignore
             this.on(`message-${id}`, resolve);
-            this.on('close', () => reject('Channel closed before reply.'));
+            this.on('close', () => reject(new Error('Channel closed before reply.')));
             this.sendPacket(packet);
-        });
+        }).catch((err) => err);
+
+        if (reply instanceof Error) throw reply;
+        return reply as Message;
     }
 }
